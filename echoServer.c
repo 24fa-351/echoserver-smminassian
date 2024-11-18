@@ -4,18 +4,21 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
 #define LISTEN_BACKLOG 5
 #define Port 8080
 
-
-void handleConnection(int a_client){
-	printf("Handling Connection on %d\n",a_client);
+//input pointer is freed by this function
+void handleConnection(int* sock_fd_ptr){
+	int sock_fd = *sock_fd_ptr; 
+	free(sock_fd_ptr);
+	printf("Handling Connection on %d\n", sock_fd);
 	 char buffer[1024];
-	 int bytes_read = read(a_client, buffer, sizeof(buffer));
+	 int bytes_read = read(sock_fd, buffer, sizeof(buffer));
 	 printf("Received: %s\n", buffer);
-	 write(a_client, buffer, bytes_read);
-	 printf("Done with connection on %d\n", a_client);
+	 write(sock_fd, buffer, bytes_read);
+	 printf("Done with connection on %d\n", sock_fd);
 }
 
 int main(int argc, char* argv[]){
@@ -37,11 +40,19 @@ int main(int argc, char* argv[]){
        	
        	struct sockaddr_in client_address;
        	socklen_t client_address_len = sizeof(client_address);
+		
        	while(1){
        	
-       	int client_fd = accept(
+       	pthread_t thread;
+       	int *client_fd_buf = malloc(sizeof(int));
+		
+		*client_fd_buf = accept(
        	socket_fd, (struct sockaddr*)&client_address, &client_address_len);
-       	handleConnection(client_fd);
+
+		printf("Accepted on %d\n", *client_fd_buf);
+
+		pthread_create(&thread, NULL, (void* (*)
+		(void*))handleConnection, (void*)client_fd_buf);
        	}
        	return 0;
        	
